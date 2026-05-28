@@ -21,14 +21,18 @@
 
 ### 1. Залежності
 Встановлюємо гіпервізор, утиліти для роботи з образами та python-бібліотеки:
+
 sudo apt update
+
 sudo apt install -y git python3 python3-pip python3-venv qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils websockify jq curl cloud-image-utils
+
 pip3 install flask jinja2
 
 
 ### 2. Завантаження проєкту
 
 git clone [https://github.com/bhchtt/cyber-cloud-engine.git](https://github.com/bhchtt/cyber-cloud-engine.git)
+
 cd cyber-cloud-engine
 
 
@@ -37,7 +41,9 @@ cd cyber-cloud-engine
 Створюємо структуру бази та файл змінних оточення:
 
 cp .env.example .env
+
 # Зайдіть в .env і впишіть свій нормальний API_KEY
+
 python3 init_db.py
 
 
@@ -46,7 +52,9 @@ python3 init_db.py
 Створюємо директорії libvirt та викачуємо офіційний cloud-образ Ubuntu:
 
 sudo mkdir -p /var/lib/libvirt/images/templates/
+
 sudo mkdir -p /var/lib/libvirt/images/vms/
+
 sudo mkdir -p /var/lib/libvirt/images/seeds/
 
 sudo wget [https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img](https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img) -O /var/lib/libvirt/images/templates/ubuntu-template.qcow2
@@ -57,6 +65,7 @@ sudo wget [https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-a
 Всі компоненти піднімаються одним скриптом у фоні:
 
 chmod +x start_cloud.sh sysinfo.sh
+
 ./start_cloud.sh
 
 
