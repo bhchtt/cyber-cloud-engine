@@ -5,4 +5,4 @@ conn.execute('''CREATE TABLE IF NOT EXISTS vms (
     status TEXT DEFAULT 'pending', vnc_port INTEGER, token TEXT UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
 conn.commit(); conn.close()
-print("✅ База cloud.db створена!")
+print(" База cloud.db створена!")
