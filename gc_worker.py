@@ -7,7 +7,7 @@ def cleanup():
     cur.execute("SELECT id, vm_name FROM vms WHERE status IN ('ready', 'error') AND created_at <= datetime('now', '-2 hours')")
     
     for vm_id, vm_name in cur.fetchall():
-        print(f"💀 [GC] Видалення {vm_name}")
+        print(f" [GC] Видалення {vm_name}")
         subprocess.run(["sudo", "virsh", "destroy", vm_name], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "virsh", "undefine", vm_name], stderr=subprocess.DEVNULL)
         try: os.remove(os.path.join(VM_DIR, f"{vm_name}.qcow2"))
@@ -22,7 +22,7 @@ def cleanup():
     conn.close()
 
 if __name__ == "__main__":
-    print("🧹 Прибиральник запущено...")
+    print(" Прибиральник запущено...")
     while True:
         cleanup()
         time.sleep(300)
