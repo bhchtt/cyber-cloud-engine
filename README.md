@@ -42,7 +42,7 @@ cd cyber-cloud-engine
 
 cp .env.example .env
 
-# Зайдіть в .env і впишіть свій нормальний API_KEY
+Зайдіть в .env і впишіть свій нормальний API_KEY
 
 python3 init_db.py
 
