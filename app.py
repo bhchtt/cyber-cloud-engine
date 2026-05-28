@@ -2,13 +2,17 @@ from flask import Flask, request, render_template_string, redirect, Response
 import sqlite3, uuid, re, subprocess, os, secrets
 
 app = Flask(__name__)
+
+# Вимикаємо стандартний спам у консоль від Flask
 import logging
 logging.getLogger('werkzeug').setLevel(logging.ERROR)
-live_metrics = {"sys_name": "Очікування...", "cores": "N/A", "ram": "N/A", "ram_p": 0, "ssd": "N/A", "ssd_p": 0, "vm_count": 0, "vms": []}
+
+live_metrics = {"sys_name": "Waiting...", "cores": "N/A", "ram": "N/A", "ram_p": 0, "ssd": "N/A", "ssd_p": 0, "vm_count": 0, "vms": []}
 
 API_KEY = os.getenv("API_KEY", "super_secret_sysinfo_key")
-MAX_VMS = 10 
+MAX_VMS = 10 # Ліміт віртуалок, щоб не покласти фізичний сервер
 
+# Апдейт схеми БД на льоту (якщо розгортаємо на старій базі)
 try:
     conn = sqlite3.connect('cloud.db')
     conn.execute("ALTER TABLE vms ADD COLUMN password TEXT")
@@ -46,11 +50,11 @@ th, td { border: 1px dashed #33ff33; padding: 10px; text-align: left; }
 .pwd-box { background: #000; padding: 2px 5px; border-radius: 3px; color: #fff; border: 1px solid #444; }
 @keyframes blink { 50% { opacity: 0.5; } }
 </style></head><body>
-<h2>CYBER CLOUD ENGINE ☁️ <span style="color:#00ff00; font-size: 14px; animation: blink 2s infinite;">● LIVE</span></h2>
+<h2>CYBER CLOUD ENGINE <span style="color:#00ff00; font-size: 14px; animation: blink 2s infinite;">[LIVE]</span></h2>
 
 {% if error_msg %}
 <div style="background: #dc3545; color: white; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
-    ❌ {{ error_msg }}
+    Error: {{ error_msg }}
 </div>
 {% endif %}
 
@@ -110,12 +114,14 @@ def index():
 @app.route('/deploy', methods=['POST'])
 def deploy():
     raw_student_id = request.form.get('student_id', '').strip().lower()
+    # Санітизація вводу, щоб не пропустити ін'єкції в імена машин
     student_id = re.sub(r'[^a-zA-Z0-9_-]', '', raw_student_id)[:32]
 
     if student_id:
         conn = sqlite3.connect('cloud.db')
         conn.execute("BEGIN IMMEDIATE")
 
+        # Перевірка на переповнення ресурсів
         count = conn.execute("SELECT COUNT(*) FROM vms WHERE status != 'deleted'").fetchone()[0]
         if count >= MAX_VMS:
             conn.close()
@@ -134,12 +140,16 @@ def delete_vm(vm_id):
 
     if vm:
         vm_name = vm[0]
+        # Жорстко зупиняємо і видаляємо віртуалку з libvirt
         subprocess.run(["sudo", "virsh", "destroy", vm_name], timeout=10, capture_output=True)
         subprocess.run(["sudo", "virsh", "undefine", vm_name], timeout=10, capture_output=True)
+        
+        # Зачищаємо диски
         try: os.remove(f"/var/lib/libvirt/images/vms/{vm_name}.qcow2")
         except: pass
         try: os.remove(f"/var/lib/libvirt/images/seeds/{vm_name}-seed.iso")
         except: pass
+        
         cur.execute("DELETE FROM vms WHERE id = ?", (vm_id,))
         conn.commit()
 
@@ -148,8 +158,10 @@ def delete_vm(vm_id):
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    # Валідація запитів від воркера
     if not secrets.compare_digest(request.headers.get("X-API-Key", ""), API_KEY):
         return "Forbidden", 403
+    
     global live_metrics
     d = request.get_json(force=True, silent=True)
     if d: live_metrics.update({'sys_name': d.get('sys_name',''), 'cores': d.get('cores',''), 'ram': d.get('ram',''), 'ssd': d.get('ssd',''), 'ram_p': calc_percent(d.get('ram','')), 'ssd_p': calc_percent(d.get('ssd',''))})

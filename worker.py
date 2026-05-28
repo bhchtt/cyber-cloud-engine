@@ -12,19 +12,21 @@ CLOUD_INIT_DIR = "/var/lib/libvirt/images/seeds/"
 TEMPLATES = {"ubuntu": "/var/lib/libvirt/images/templates/ubuntu-template.qcow2"}
 
 def update_tokens(cur):
+    # Оновлення мапінгу токенів для noVNC
     cur.execute("SELECT token, vnc_port FROM vms WHERE status='ready'")
     with open(f"{TOKEN_FILE}.tmp", "w") as f:
         for t, p in cur.fetchall(): f.write(f"{t}: 127.0.0.1:{p}\n")
     os.rename(f"{TOKEN_FILE}.tmp", TOKEN_FILE)
 
 def process_queue():
-    print("⚙️ Worker: Очікування завдань...")
+    print("[Worker] Daemon started. Waiting for jobs...")
     while True:
         try:
             conn = sqlite3.connect('cloud.db', timeout=30)
             conn.execute('PRAGMA journal_mode=WAL;')
             cur = conn.cursor()
 
+            # Беремо найстаріше завдання з черги
             job = cur.execute("""
                 UPDATE vms
                 SET status = 'creating'
@@ -35,7 +37,7 @@ def process_queue():
 
             if job:
                 vm_id, vm_name, token = job
-                print(f"🚀 Деплой: {vm_name}")
+                print(f"[Worker] Starting deployment for: {vm_name}")
 
                 disk = os.path.join(VM_DIR, f"{vm_name}.qcow2")
                 seed = os.path.join(CLOUD_INIT_DIR, f"{vm_name}-seed.iso")
@@ -44,6 +46,7 @@ def process_queue():
                 xml_tmp = f"/tmp/{vm_name}.xml"
 
                 try:
+                    # Створення дельти диска замість повного копіювання
                     subprocess.run(["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", TEMPLATES["ubuntu"], disk], check=True, timeout=10)
 
                     pwd = secrets.token_urlsafe(8)
@@ -51,7 +54,7 @@ def process_queue():
                     with open(meta_tmp, "w") as f:
                         f.write(f"instance-id: {vm_name}\nlocal-hostname: {vm_name}\n")
 
-                    # 🔥 ОСТЬ ТУТ ВИПРАВЛЕНИЙ СИНТАКСИС ПАРОЛЯ
+                    # Генерація cloud-init конфігу для юзера student
                     cloud_config = f"""#cloud-config
 chpasswd:
   list: |
@@ -77,6 +80,7 @@ disable_root: false
                     subprocess.run(["sudo", "virsh", "start", vm_name], check=True, timeout=15)
 
                     port = None
+                    # Чекаємо поки підніметься VNC сервер
                     for _ in range(20):
                         try:
                             out = subprocess.check_output(["sudo", "virsh", "vncdisplay", vm_name]).decode().strip()
@@ -87,11 +91,12 @@ disable_root: false
                     if port:
                         cur.execute("UPDATE vms SET status = 'ready', vnc_port = ?, password = ? WHERE id = ?", (port, pwd, vm_id))
                         update_tokens(cur)
-                        print(f"✅ Готово! VNC Порт: {port}")
+                        print(f"[Worker] Success. {vm_name} is running on VNC port {port}")
                     else: raise Exception("VNC Timeout")
 
                 except Exception as e:
-                    print(f"❌ Помилка деплою: {e}")
+                    print(f"[Worker] Deployment failed: {e}")
+                    # Відкат змін у разі помилки
                     subprocess.run(["sudo", "virsh", "destroy", vm_name], stderr=subprocess.DEVNULL)
                     subprocess.run(["sudo", "virsh", "undefine", vm_name], stderr=subprocess.DEVNULL)
                     try: os.remove(disk)
@@ -101,6 +106,7 @@ disable_root: false
                     cur.execute("UPDATE vms SET status = 'error' WHERE id = ?", (vm_id,))
 
                 finally:
+                    # Прибирання тимчасових файлів
                     for f in [meta_tmp, user_tmp, xml_tmp]:
                         try: os.remove(f)
                         except: pass
@@ -108,7 +114,7 @@ disable_root: false
             else:
                 time.sleep(2)
 
-        except Exception as e: print(f"DB Error: {e}")
+        except Exception as e: print(f"[Worker] DB Error: {e}")
         finally:
             if 'conn' in locals(): conn.close()
 
