@@ -21,7 +21,6 @@
 
 ### 1. Залежності
 Встановлюємо гіпервізор, утиліти для роботи з образами та python-бібліотеки:
-```bash
 sudo apt update
 sudo apt install -y git python3 python3-pip python3-venv qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils websockify jq curl cloud-image-utils
 pip3 install flask jinja2
