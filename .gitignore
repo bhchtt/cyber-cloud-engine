@@ -1,0 +1,8 @@
+cloud.db
+.env
+*.log
+__pycache__/
+/tmp/
+vnc_tokens.txt
+cloud.db*
+*.backup
