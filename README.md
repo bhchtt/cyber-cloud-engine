@@ -37,7 +37,6 @@ cp .env.example .env
 python3 init_db.py
 
 4. Підготовка базового образу
-
 Оркестратор шукає базовий диск для клонування. Створюємо директорії libvirt та викачуємо офіційний cloud-образ Ubuntu:
 
 sudo mkdir -p /var/lib/libvirt/images/templates/
@@ -47,7 +46,6 @@ sudo mkdir -p /var/lib/libvirt/images/seeds/
 sudo wget [https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img](https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img) -O /var/lib/libvirt/images/templates/ubuntu-template.qcow2
 
 5. Запуск
-
 Всі компоненти (flask, worker, радар, websockify) піднімаються одним скриптом у фоні через nohup:
 
 chmod +x start_cloud.sh sysinfo.sh
@@ -55,8 +53,7 @@ chmod +x start_cloud.sh sysinfo.sh
 
 Після цього веб-інтерфейс буде доступний на порту `5000`: `http://IP_сервера:5000`
 
-### Дебаг та логи
-
+Дебаг та логи
 Скрипт запуску автоматично створює папку `logs/`. Якщо щось падає, дивитись сюди:
 
 * `tail -f logs/app.log` — логи веб-сервера
